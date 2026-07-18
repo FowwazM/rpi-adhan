@@ -7,6 +7,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from adhan.models import Prayer
+
+_VALID_PRAYER_KEYS = {p.value for p in Prayer}
+
 
 class Madhab(str, Enum):
     SHAFI = "shafi"
@@ -55,12 +59,28 @@ class PrayerTimesConfig(_Base):
     offline: OfflineConfig = Field(default_factory=OfflineConfig)
     prayers: dict[str, PrayerConfig] = Field(default_factory=dict)
 
+    @field_validator("prayers")
+    @classmethod
+    def _known_prayers(cls, v: dict) -> dict:
+        unknown = set(v) - _VALID_PRAYER_KEYS
+        if unknown:
+            raise ValueError(f"Unknown prayer(s): {sorted(unknown)}")
+        return v
+
 
 class AudioConfig(_Base):
     default_file: str
     per_prayer_files: dict[str, str] = Field(default_factory=dict)
     default_volume: float = Field(0.6, ge=0.0, le=1.0)
     per_prayer_volume: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("per_prayer_files", "per_prayer_volume")
+    @classmethod
+    def _known_audio_prayers(cls, v: dict) -> dict:
+        unknown = set(v) - _VALID_PRAYER_KEYS
+        if unknown:
+            raise ValueError(f"Unknown prayer(s) in audio config: {sorted(unknown)}")
+        return v
 
 
 class CastOutput(_Base):

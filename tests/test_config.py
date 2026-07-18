@@ -81,3 +81,21 @@ def test_latitude_out_of_range_rejected(tmp_path):
     bad = VALID.replace("latitude: 29.7007851", "latitude: 200.0")
     with pytest.raises(ValueError):
         load_config(_write(tmp_path, bad))
+
+
+def test_unknown_prayer_key_rejected():
+    from adhan.config import PrayerTimesConfig
+    with pytest.raises(ValueError, match="fajar"):
+        PrayerTimesConfig(prayers={"fajar": {"enabled": True}})
+
+
+def test_unknown_per_prayer_audio_key_rejected():
+    from adhan.config import AudioConfig
+    with pytest.raises(ValueError, match="fajar"):
+        AudioConfig(default_file="a.mp3", per_prayer_volume={"fajar": 0.4})
+
+
+def test_extra_field_rejected():
+    from adhan.config import LocationConfig
+    with pytest.raises(ValueError):
+        LocationConfig(latitude=1.0, longitude=1.0, timezone="UTC", bogus=1)
