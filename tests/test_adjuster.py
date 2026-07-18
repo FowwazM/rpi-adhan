@@ -39,3 +39,12 @@ def test_defaults_when_prayer_missing_from_config():
     out = adj.adjust(SCHED)
     assert out[Prayer.FAJR] == _dt(5, 0)
     assert set(out) == {Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA}
+
+
+def test_fajr_before_sunrise_with_offset():
+    adj = ScheduleAdjuster(
+        {"fajr": PrayerConfig(mode=FajrMode.BEFORE_SUNRISE, before_sunrise_minutes=30, offset_minutes=5)}
+    )
+    out = adj.adjust(SCHED)
+    # sunrise 06:30 - 30m = 06:00, then + 5m offset = 06:05
+    assert out[Prayer.FAJR] == _dt(6, 5)

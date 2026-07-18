@@ -1,6 +1,8 @@
 from datetime import date
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from adhan.config import LocationConfig, OfflineConfig, Madhab
 from adhan.times.offline import OfflineProvider
 
@@ -26,3 +28,13 @@ def test_hanafi_asr_is_later_than_shafi():
     shafi = OfflineProvider(OfflineConfig(madhab=Madhab.SHAFI), LOCATION).get_schedule(day)
     hanafi = OfflineProvider(OfflineConfig(madhab=Madhab.HANAFI), LOCATION).get_schedule(day)
     assert hanafi.asr > shafi.asr
+
+
+def test_unknown_method_raises():
+    with pytest.raises(ValueError, match="method"):
+        OfflineProvider(OfflineConfig(method="bogus"), LOCATION)
+
+
+def test_unknown_high_latitude_rule_raises():
+    with pytest.raises(ValueError, match="high_latitude_rule"):
+        OfflineProvider(OfflineConfig(high_latitude_rule="bogus"), LOCATION)
