@@ -26,6 +26,7 @@ class AdhanScheduler:
         backend: SchedulerBackend,
         misfire_grace_seconds: int = 300,
         on_regenerate: Callable[[dict[Prayer, datetime]], None] | None = None,
+        clock: Callable[[], datetime] | None = None,
     ):
         self._provider = provider
         self._adjuster = adjuster
@@ -33,6 +34,7 @@ class AdhanScheduler:
         self._backend = backend
         self._grace = misfire_grace_seconds
         self._on_regenerate = on_regenerate
+        self._now = clock or (lambda: datetime.now().astimezone())
 
     def compute_jobs(self, day: date) -> dict[Prayer, datetime]:
         return self._adjuster.adjust(self._provider.get_schedule(day))
@@ -61,9 +63,14 @@ class AdhanScheduler:
 
     def _regenerate(self) -> None:
         self._backend.remove_all_jobs()
-        self.schedule_day(datetime.now().astimezone())
-        # re-register the daily regeneration cron (removed by remove_all_jobs)
-        self._register_daily_regen()
+        try:
+            self.schedule_day(self._now())
+        except Exception:
+            logger.exception("prayer schedule regeneration failed")
+        finally:
+            # Always re-register the daily cron so a transient failure can't
+            # permanently stop regeneration (remove_all_jobs cleared it).
+            self._register_daily_regen()
 
     def _register_daily_regen(self) -> None:
         self._backend.add_job(
@@ -71,6 +78,6 @@ class AdhanScheduler:
         )
 
     def start(self) -> None:
-        self.schedule_day(datetime.now().astimezone())
+        self.schedule_day(self._now())
         self._register_daily_regen()
         self._backend.start()

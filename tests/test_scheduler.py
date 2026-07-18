@@ -19,13 +19,22 @@ SCHED = PrayerSchedule(
 )
 
 
-def _make(fired, backend):
+FIXED_NOW = _dt(11, 0)  # UTC, after fajr / before dhuhr
+
+
+class _RaisingProvider:
+    def get_schedule(self, day):
+        raise RuntimeError("provider boom")
+
+
+def _make(fired, backend, clock=None):
     return AdhanScheduler(
         provider=FakeTimeProvider(SCHED),
         adjuster=ScheduleAdjuster({}),
         on_prayer=lambda p: fired.append(p),
         backend=backend,
         misfire_grace_seconds=300,
+        clock=clock,
     )
 
 
@@ -52,3 +61,57 @@ def test_scheduled_job_fires_callback():
 def test_compute_jobs_returns_all_enabled():
     jobs = _make([], FakeScheduler()).compute_jobs(date(2026, 7, 18))
     assert set(jobs) == {Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA}
+
+
+def test_start_schedules_today_registers_cron_and_starts_backend():
+    backend = FakeScheduler()
+    _make([], backend, clock=lambda: FIXED_NOW).start()
+    assert {j.id for j in backend.jobs} == {"prayer-dhuhr", "prayer-asr", "prayer-maghrib", "prayer-isha"}
+    assert len(backend.cron_jobs) == 1
+    assert backend.cron_jobs[0]["hour"] == 0 and backend.cron_jobs[0]["minute"] == 1
+    assert backend.cron_jobs[0]["id"] == "daily-regen"
+    assert backend.started is True
+
+
+def test_regenerate_reschedules_and_reregisters_cron():
+    backend = FakeScheduler()
+    sched = _make([], backend, clock=lambda: FIXED_NOW)
+    sched._register_daily_regen()          # a cron already exists
+    sched._regenerate()
+    assert {j.id for j in backend.jobs} == {"prayer-dhuhr", "prayer-asr", "prayer-maghrib", "prayer-isha"}
+    assert any(c["id"] == "daily-regen" for c in backend.cron_jobs)
+
+
+def test_regenerate_reregisters_cron_even_when_scheduling_fails():
+    # Regression for the critical bug: a failing provider must NOT leave the
+    # appliance with no cron (which would permanently stop regeneration).
+    backend = FakeScheduler()
+    sched = AdhanScheduler(
+        provider=_RaisingProvider(),
+        adjuster=ScheduleAdjuster({}),
+        on_prayer=lambda p: None,
+        backend=backend,
+        clock=lambda: FIXED_NOW,
+    )
+    sched._regenerate()  # must not raise out of the callback
+    assert any(c["id"] == "daily-regen" for c in backend.cron_jobs), "cron must survive a failed regeneration"
+
+
+def test_on_regenerate_callback_receives_jobs():
+    received = {}
+    backend = FakeScheduler()
+    sched = AdhanScheduler(
+        provider=FakeTimeProvider(SCHED),
+        adjuster=ScheduleAdjuster({}),
+        on_prayer=lambda p: None,
+        backend=backend,
+        on_regenerate=lambda jobs: received.update(jobs),
+    )
+    sched.schedule_day(FIXED_NOW)
+    assert set(received) == {Prayer.FAJR, Prayer.DHUHR, Prayer.ASR, Prayer.MAGHRIB, Prayer.ISHA}
+
+
+def test_misfire_grace_forwarded_to_date_jobs():
+    backend = FakeScheduler()
+    _make([], backend).schedule_day(FIXED_NOW)
+    assert backend.jobs and all(j.kwargs["misfire_grace_time"] == 300 for j in backend.jobs)
