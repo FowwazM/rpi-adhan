@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 
 from adhan.cli import build_parser, cmd_status, main
 
@@ -35,3 +34,40 @@ def test_main_dispatches_status(tmp_path, capsys):
     rc = main(["--state", str(state), "status"])
     assert rc == 0
     assert "isha" in capsys.readouterr().out
+
+
+def test_main_dispatches_run(monkeypatch):
+    calls = {}
+
+    class _FakeApp:
+        def __init__(self, config, media, state):
+            calls["init"] = True
+
+        def run(self):
+            calls["run"] = True
+
+    monkeypatch.setattr("adhan.app.App", _FakeApp)
+    monkeypatch.setattr("adhan.config.load_config", lambda path: object())
+    rc = main(["--config", "x.yaml", "run"])
+    assert rc == 0 and calls.get("run") is True
+
+
+def test_main_dispatches_test_play(monkeypatch):
+    from adhan.models import Prayer
+
+    calls = {}
+
+    class _FakeApp:
+        def __init__(self, config, media, state):
+            pass
+
+        def build(self):
+            calls["build"] = True
+
+        def trigger(self, prayer):
+            calls["trigger"] = prayer
+
+    monkeypatch.setattr("adhan.app.App", _FakeApp)
+    monkeypatch.setattr("adhan.config.load_config", lambda path: object())
+    rc = main(["--config", "x.yaml", "test-play", "asr"])
+    assert rc == 0 and calls.get("trigger") == Prayer.ASR

@@ -41,14 +41,18 @@ def cmd_run(args) -> int:
 
 
 def cmd_test_play(args) -> int:
+    import tempfile
+
     from adhan.app import App
     from adhan.config import load_config
     from adhan.models import Prayer
 
     config = load_config(args.config)
-    app = App(config, Path(args.media), Path(args.state))
-    scheduler = app.build()
-    scheduler._on_prayer(Prayer(args.prayer))
+    # Throwaway state dir so a manual test-play never overwrites the live state.json.
+    with tempfile.TemporaryDirectory() as tmp:
+        app = App(config, Path(args.media), Path(tmp) / "state.json")
+        app.build()
+        app.trigger(Prayer(args.prayer))
     return 0
 
 
@@ -60,4 +64,4 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_status(args.state)
     if args.command == "test-play":
         return cmd_test_play(args)
-    return 2
+    return 2  # pragma: no cover  (unreachable: subparsers are required=True)
