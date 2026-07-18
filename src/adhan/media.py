@@ -38,7 +38,7 @@ class _MediaRequestHandler(SimpleHTTPRequestHandler):
 
 
 class MediaHTTPServer:
-    def __init__(self, media_dir, host: str, port: int):
+    def __init__(self, media_dir: Path, host: str, port: int):
         handler = functools.partial(_MediaRequestHandler, directory=str(media_dir))
         self._httpd = ThreadingHTTPServer((host, port), handler)
         self._thread: threading.Thread | None = None
@@ -52,7 +52,7 @@ class MediaHTTPServer:
         self._thread.start()
 
     def stop(self) -> None:
-        self._httpd.shutdown()
-        self._httpd.server_close()
-        if self._thread:
+        if self._thread is not None:
+            self._httpd.shutdown()
             self._thread.join(timeout=5)
+        self._httpd.server_close()

@@ -68,3 +68,10 @@ def test_http_server_blocks_directory_listing(tmp_path):
             assert e.code == 404
     finally:
         server.stop()
+
+
+def test_stop_is_safe_before_start(tmp_path):
+    # Calling stop() without a prior start() must not deadlock or raise;
+    # it should release the bound socket and return.
+    server = MediaHTTPServer(tmp_path, host="127.0.0.1", port=0)
+    server.stop()
