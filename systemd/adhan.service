@@ -1,6 +1,6 @@
 [Unit]
 Description=Adhan appliance
-After=network-online.target pipewire.service
+After=network-online.target adhan-bt-keepalive.service
 Wants=network-online.target
 
 [Service]

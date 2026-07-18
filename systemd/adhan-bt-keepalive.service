@@ -1,6 +1,6 @@
 [Unit]
 Description=Adhan Bluetooth keep-alive (combined sink + anti-sleep)
-After=bluetooth.service pipewire.service
+After=bluetooth.service
 
 [Service]
 Type=simple

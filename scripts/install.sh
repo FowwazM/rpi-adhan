@@ -9,14 +9,23 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "== Installing system packages =="
 sudo apt-get update
 sudo apt-get install -y python3 python3-venv python3-pip \
-  bluez pipewire pipewire-pulse wireplumber pulseaudio-utils shellcheck
+  bluez pipewire pipewire-pulse wireplumber pulseaudio-utils
 
 echo "== Creating service user =="
 id adhan &>/dev/null || sudo useradd --system --create-home --groups audio,bluetooth adhan
 
+echo "== Enabling user-session audio (PipeWire) for the service account =="
+sudo loginctl enable-linger adhan
+ADHAN_UID="$(id -u adhan)"
+# Start PipeWire in the adhan user session (socket-activated; tolerate first-run races).
+sudo -u adhan XDG_RUNTIME_DIR="/run/user/${ADHAN_UID}" \
+  systemctl --user enable --now pipewire pipewire-pulse wireplumber || true
+
 echo "== Laying down application =="
 sudo mkdir -p "$APP_DIR" "$CFG_DIR/media" /var/lib/adhan "$APP_DIR/share"
-sudo cp -r "$REPO_DIR/src" "$REPO_DIR/pyproject.toml" "$APP_DIR/"
+sudo rm -rf "$APP_DIR/src" "$APP_DIR/scripts"
+sudo cp -r "$REPO_DIR/src" "$APP_DIR/"
+sudo cp "$REPO_DIR/pyproject.toml" "$APP_DIR/"
 sudo cp -r "$REPO_DIR/scripts" "$APP_DIR/"
 sudo chmod +x "$APP_DIR"/scripts/*.sh
 
@@ -26,14 +35,20 @@ sudo "$APP_DIR/.venv/bin/pip" install -e "$APP_DIR"
 
 echo "== Config =="
 [[ -f "$CFG_DIR/config.yaml" ]] || sudo cp "$REPO_DIR/config/config.example.yaml" "$CFG_DIR/config.yaml"
+[[ -f "$CFG_DIR/bt-macs.env" ]] || echo 'MACS=""' | sudo tee "$CFG_DIR/bt-macs.env" >/dev/null
 
 echo "== Keep-alive tone =="
 # 30s near-silent 50Hz tone at low volume.
-sudo bash -c "command -v sox >/dev/null || apt-get install -y sox"
+command -v sox >/dev/null || sudo apt-get install -y sox
 sudo sox -n -r 44100 -c 2 "$APP_DIR/share/silence.wav" synth 30 sine 50 vol 0.02
 
 echo "== systemd units =="
 sudo cp "$REPO_DIR"/systemd/*.service /etc/systemd/system/
+for svc in adhan adhan-bt-keepalive; do
+  sudo mkdir -p "/etc/systemd/system/${svc}.service.d"
+  printf '[Service]\nEnvironment=XDG_RUNTIME_DIR=/run/user/%s\n' "$ADHAN_UID" \
+    | sudo tee "/etc/systemd/system/${svc}.service.d/runtime.conf" >/dev/null
+done
 sudo chown -R adhan:adhan "$APP_DIR" "$CFG_DIR" /var/lib/adhan
 sudo systemctl daemon-reload
 
