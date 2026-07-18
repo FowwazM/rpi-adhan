@@ -1,4 +1,5 @@
 from datetime import date
+from datetime import time as _time
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -38,3 +39,26 @@ def test_unknown_method_raises():
 def test_unknown_high_latitude_rule_raises():
     with pytest.raises(ValueError, match="high_latitude_rule"):
         OfflineProvider(OfflineConfig(high_latitude_rule="bogus"), LOCATION)
+
+
+def test_matches_aladhan_reference_within_tolerance():
+    # Golden reference from api.aladhan.com (method=2 ISNA, school=0 Shafi) for
+    # 2026-07-18 at Houston, America/Chicago. Cross-implementation drift (adhanpy
+    # vs aladhan) of the SAME method is a few minutes; a wrong method mapping would
+    # shift the angle-based Fajr/Isha by 10+ minutes, which this catches.
+    reference = {
+        "fajr": _time(5, 19),
+        "dhuhr": _time(13, 30),
+        "asr": _time(17, 5),
+        "maghrib": _time(20, 24),
+        "isha": _time(21, 39),
+    }
+    sched = OfflineProvider(
+        OfflineConfig(method="north_america", madhab=Madhab.SHAFI), LOCATION
+    ).get_schedule(date(2026, 7, 18))
+    tz = ZoneInfo("America/Chicago")
+    got = {"fajr": sched.fajr, "dhuhr": sched.dhuhr, "asr": sched.asr, "maghrib": sched.maghrib, "isha": sched.isha}
+    for name, ref in reference.items():
+        local = got[name].astimezone(tz)
+        delta = abs((local.hour * 60 + local.minute) - (ref.hour * 60 + ref.minute))
+        assert delta <= 5, f"{name}: adhanpy {local.time()} vs aladhan {ref} differ by {delta} min"

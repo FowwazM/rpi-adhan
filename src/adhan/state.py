@@ -21,6 +21,7 @@ class StateStore:
             "next_prayer": None,
             "today_schedule": {},
             "last_results": {},
+            "speaker_health": {},
         }
         with self._lock:
             self._write()
@@ -28,13 +29,7 @@ class StateStore:
     def set_schedule(self, jobs: dict[Prayer, datetime]) -> None:
         with self._lock:
             self._data["today_schedule"] = {p.value: when.isoformat() for p, when in jobs.items()}
-            now = self._clock()
-            upcoming = sorted((when, p.value) for p, when in jobs.items() if when > now)
-            if upcoming:
-                when, name = upcoming[0]
-                self._data["next_prayer"] = {"name": name, "time": when.isoformat()}
-            else:
-                self._data["next_prayer"] = None
+            self._refresh_next_prayer()
             self._write()
 
     def record_result(self, prayer: Prayer, results: list[PlayResult]) -> None:
@@ -46,7 +41,24 @@ class StateStore:
                     for r in results
                 },
             }
+            for r in results:
+                self._data["speaker_health"][r.player] = "ok" if r.success else "unreachable"
+            self._refresh_next_prayer()
             self._write()
+
+    def _refresh_next_prayer(self) -> None:
+        # Caller holds self._lock.
+        now = self._clock()
+        upcoming = sorted(
+            (datetime.fromisoformat(t), name)
+            for name, t in self._data["today_schedule"].items()
+            if datetime.fromisoformat(t) > now
+        )
+        if upcoming:
+            when, name = upcoming[0]
+            self._data["next_prayer"] = {"name": name, "time": when.isoformat()}
+        else:
+            self._data["next_prayer"] = None
 
     def _write(self) -> None:
         # Caller must hold self._lock.

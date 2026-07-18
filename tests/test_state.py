@@ -50,6 +50,23 @@ def test_no_leftover_tmp_file(tmp_path):
     assert list(tmp_path.glob("*.tmp")) == []
 
 
+def test_records_speaker_health(tmp_path):
+    store = StateStore(tmp_path / "state.json", clock=lambda: _dt(13, 0))
+    store.record_result(Prayer.DHUHR, [PlayResult("cast:Living", True), PlayResult("bluetooth:x", False, "boom")])
+    health = json.loads((tmp_path / "state.json").read_text())["speaker_health"]
+    assert health == {"cast:Living": "ok", "bluetooth:x": "unreachable"}
+
+
+def test_next_prayer_advances_after_fire(tmp_path):
+    clock_val = [_dt(11, 0)]
+    store = StateStore(tmp_path / "state.json", clock=lambda: clock_val[0])
+    store.set_schedule({Prayer.DHUHR: _dt(13, 0), Prayer.ASR: _dt(17, 0)})
+    assert json.loads((tmp_path / "state.json").read_text())["next_prayer"]["name"] == "dhuhr"
+    clock_val[0] = _dt(13, 30)  # dhuhr has now passed
+    store.record_result(Prayer.DHUHR, [PlayResult("cast:x", True)])
+    assert json.loads((tmp_path / "state.json").read_text())["next_prayer"]["name"] == "asr"
+
+
 def test_concurrent_writes_are_safe(tmp_path):
     import threading
 

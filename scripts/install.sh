@@ -64,6 +64,7 @@ for svc in adhan adhan-bt-keepalive; do
     | sudo tee "/etc/systemd/system/${svc}.service.d/runtime.conf" >/dev/null
 done
 sudo chown -R adhan:adhan "$APP_DIR" "$CFG_DIR" /var/lib/adhan
+sudo chmod 0640 "$CFG_DIR/config.yaml"
 sudo systemctl daemon-reload
 
 cat <<'EOF'

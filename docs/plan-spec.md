@@ -289,7 +289,7 @@ The three measures that make Bluetooth dependable, all owned by the systemd-leve
 
 - **Cast device unreachable / asleep:** health-check fails fast → retry with backoff → record failure; other outputs still play.
 - **Bluetooth speaker disconnected at prayer time:** watchdog is already reconnecting; play still attempts and retries within the misfire grace window.
-- **Pi was off/asleep at prayer time:** `misfire_grace_seconds` fires a late adhan if within grace; beyond grace it is skipped and logged (an adhan hours late is worse than none).
+- **Pi was off/asleep at prayer time:** the missed prayer is **skipped, not replayed** on the next boot — a late adhan for a prayer whose time has already passed is more confusing than helpful, and replaying on a crash-restart is undesirable. `misfire_grace_seconds` applies to *in-process* scheduling lateness only: if the service is running but briefly busy at the scheduled second, APScheduler still fires the job up to that many seconds late.
 - **DST / timezone change:** tz-aware datetimes + daily regen handle it; a prayer near the DST jump is computed against the correct offset for that date.
 - **Config invalid:** service refuses to start with a clear validation error (fail loud, not silently wrong).
 - **Media file missing:** validated at load and pre-flight; the affected prayer logs an error rather than crashing the service.

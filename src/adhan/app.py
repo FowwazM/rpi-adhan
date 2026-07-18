@@ -65,6 +65,10 @@ class App:
         players = build_players(cfg.outputs, cfg.reliability, DEFAULT_COMBINED_SINK)
         state = StateStore(self._state_path)
         self._orchestrator = Orchestrator(media, OutputManager(players), state)
+        if cfg.prayer_times.source != "offline":
+            raise ValueError(
+                f"prayer_times.source '{cfg.prayer_times.source}' is not supported in Phase 1 (offline only)"
+            )
         provider = OfflineProvider(cfg.prayer_times.offline, cfg.location)
         adjuster = ScheduleAdjuster(cfg.prayer_times.prayers)
         backend = BackgroundScheduler(timezone=cfg.location.timezone)
