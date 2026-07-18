@@ -66,3 +66,52 @@ class FakePlayer:
                 raise RuntimeError("boom")
             return PlayResult(self.name, success=False, error="simulated failure")
         return PlayResult(self.name, success=True)
+
+
+class _FakeMediaController:
+    def __init__(self, states):
+        self._states = list(states)
+        self.played = None
+        self.player_state = "UNKNOWN"
+
+    def play_media(self, url, content_type):
+        self.played = (url, content_type)
+
+    def block_until_active(self, timeout=None):
+        pass
+
+    @property
+    def status(self):
+        self.player_state = self._states.pop(0) if self._states else "IDLE"
+
+        class _S:
+            pass
+
+        s = _S()
+        s.player_state = self.player_state
+        return s
+
+
+class FakeCast:
+    def __init__(self, name="Living", volume=0.3, states=("PLAYING", "IDLE")):
+        self.name = name
+        self.volume_level = volume
+        self.set_volumes: list[float] = []
+        self.media_controller = _FakeMediaController(states)
+        self.waited = False
+
+    def wait(self, timeout=None):
+        self.waited = True
+
+    def set_volume(self, level):
+        self.volume_level = level
+        self.set_volumes.append(level)
+
+    @property
+    def status(self):
+        class _S:
+            pass
+
+        s = _S()
+        s.volume_level = self.volume_level
+        return s
