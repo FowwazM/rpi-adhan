@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from datetime import date
 
 from adhan.models import HealthState, HealthStatus, MediaRef, PlayResult, PrayerSchedule
@@ -115,3 +116,28 @@ class FakeCast:
         s = _S()
         s.volume_level = self.volume_level
         return s
+
+
+class RecordingRunner:
+    """Stands in for subprocess.run. `fail_on` = substring that triggers CalledProcessError."""
+
+    def __init__(self, sinks_output="adhan_combined\t...\n", fail_on: str | None = None):
+        self.commands: list[list[str]] = []
+        self._sinks_output = sinks_output
+        self._fail_on = fail_on
+
+    def __call__(self, args, check=False, capture_output=False, text=False, timeout=None):
+        self.commands.append(args)
+        if self._fail_on and self._fail_on in " ".join(args):
+            raise subprocess.CalledProcessError(1, args)
+        stdout = ""
+        if args[:3] == ["pactl", "list", "short"]:
+            stdout = self._sinks_output
+
+        class _CP:
+            pass
+
+        cp = _CP()
+        cp.returncode = 0
+        cp.stdout = stdout
+        return cp
