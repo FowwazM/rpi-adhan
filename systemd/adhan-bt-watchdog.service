@@ -1,0 +1,16 @@
+[Unit]
+Description=Adhan Bluetooth reconnect watchdog
+After=bluetooth.service
+
+[Service]
+Type=simple
+User=adhan
+Group=adhan
+SupplementaryGroups=bluetooth
+EnvironmentFile=/etc/adhan/bt-macs.env
+ExecStart=/bin/bash -c '/opt/adhan/scripts/bt-watchdog.sh $MACS'
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
