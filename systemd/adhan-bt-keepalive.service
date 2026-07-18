@@ -1,0 +1,15 @@
+[Unit]
+Description=Adhan Bluetooth keep-alive (combined sink + anti-sleep)
+After=bluetooth.service pipewire.service
+
+[Service]
+Type=simple
+User=adhan
+Group=adhan
+SupplementaryGroups=audio bluetooth
+ExecStart=/opt/adhan/scripts/bt-keepalive.sh
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
