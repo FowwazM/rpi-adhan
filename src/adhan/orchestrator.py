@@ -22,12 +22,22 @@ class Orchestrator:
             media, volume = self._media.resolve(prayer)
         except FileNotFoundError as exc:
             logger.error("media resolve failed", extra={"prayer": prayer.value, "error": str(exc)})
-            self._state.record_result(prayer, [PlayResult("media", False, error=str(exc))])
+            self._record(prayer, [PlayResult("media", False, error=str(exc))])
             return
         results = self._outputs.play_all(media, volume)
         for r in results:
-            logger.info(
+            level = logging.INFO if r.success else logging.WARNING
+            logger.log(
+                level,
                 "output result",
                 extra={"prayer": prayer.value, "player": r.player, "success": r.success},
             )
-        self._state.record_result(prayer, results)
+        if results and not any(r.success for r in results):
+            logger.error("adhan failed on all outputs", extra={"prayer": prayer.value})
+        self._record(prayer, results)
+
+    def _record(self, prayer: Prayer, results: list[PlayResult]) -> None:
+        try:
+            self._state.record_result(prayer, results)
+        except Exception:
+            logger.exception("failed to record state", extra={"prayer": prayer.value})

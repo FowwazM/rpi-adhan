@@ -43,3 +43,29 @@ def test_handle_prayer_missing_file_is_recorded_not_raised(tmp_path):
 
     outputs = json.loads((tmp_path / "state.json").read_text())["last_results"]["dhuhr"]["outputs"]
     assert outputs["media"]["success"] is False
+
+
+def test_state_write_failure_is_swallowed(tmp_path):
+    (tmp_path / "adhan.mp3").write_bytes(b"x")
+    audio = AudioConfig(default_file="adhan.mp3", default_volume=0.6)
+    mm = MediaManager(audio, tmp_path, "http://10.0.0.5:8127")
+
+    class _BoomState:
+        def record_result(self, prayer, results):
+            raise OSError("disk full")
+
+    orch = Orchestrator(mm, OutputManager([FakePlayer("a")]), _BoomState())
+    orch.handle_prayer(Prayer.DHUHR)  # must not raise
+
+
+def test_all_outputs_failed_logs_error(tmp_path, caplog):
+    import logging as _logging
+
+    (tmp_path / "adhan.mp3").write_bytes(b"x")
+    audio = AudioConfig(default_file="adhan.mp3", default_volume=0.6)
+    mm = MediaManager(audio, tmp_path, "http://10.0.0.5:8127")
+    state = StateStore(tmp_path / "state.json", clock=lambda: datetime(2026, 7, 18, 13, 0, tzinfo=timezone.utc))
+    orch = Orchestrator(mm, OutputManager([FakePlayer("bad", fail_times=5)]), state)
+    with caplog.at_level(_logging.WARNING):
+        orch.handle_prayer(Prayer.DHUHR)
+    assert "adhan failed on all outputs" in [r.message for r in caplog.records]

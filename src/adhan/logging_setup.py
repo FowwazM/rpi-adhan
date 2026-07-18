@@ -11,14 +11,13 @@ _STANDARD = set(
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        payload = {
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
+        payload = {}
         for key, value in record.__dict__.items():
             if key not in _STANDARD and not key.startswith("_"):
                 payload[key] = value
+        payload["level"] = record.levelname
+        payload["logger"] = record.name
+        payload["message"] = record.getMessage()
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
         return json.dumps(payload)
