@@ -26,12 +26,14 @@ class CastPlayer:
         cast_factory: Callable[[str], object] = _default_factory,
         poll_interval: float = 1.0,
         max_wait_seconds: float = 600.0,
+        sleep: Callable[[float], None] | None = None,
     ):
         self.name = f"cast:{name}"
         self._device_name = name
         self._factory = cast_factory
         self._poll = poll_interval
         self._max_wait = max_wait_seconds
+        self._sleep = sleep or time.sleep
 
     def health_check(self) -> HealthStatus:
         try:
@@ -43,21 +45,28 @@ class CastPlayer:
     def play(self, media: MediaRef, volume: float) -> PlayResult:
         try:
             cc = self._factory(self._device_name)
-            previous = cc.status.volume_level
+        except Exception as exc:
+            return PlayResult(self.name, False, error=str(exc))
+        previous = cc.status.volume_level
+        try:
             cc.set_volume(volume)
             mc = cc.media_controller
             mc.play_media(media.url, "audio/mpeg")
             mc.block_until_active(timeout=30)
             self._wait_for_finish(mc)
-            cc.set_volume(previous)
             return PlayResult(self.name, True)
         except Exception as exc:
             return PlayResult(self.name, False, error=str(exc))
+        finally:
+            try:
+                cc.set_volume(previous)
+            except Exception:
+                pass
 
     def _wait_for_finish(self, mc) -> None:
         waited = 0.0
         while mc.status.player_state in _ACTIVE_STATES:
             if self._poll <= 0 or waited >= self._max_wait:
                 break
-            time.sleep(self._poll)
+            self._sleep(self._poll)
             waited += self._poll

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Callable
 
 from adhan.models import MediaRef, PlayResult
@@ -20,8 +21,6 @@ class ReliablePlayer:
         self._inner = inner
         self._attempts = max(1, attempts)
         self._backoff = backoff_seconds
-        import time
-
         self._sleep = sleep or time.sleep
 
     @property

@@ -22,3 +22,11 @@ def test_one_failure_does_not_block_others():
 
 def test_empty_players_returns_empty():
     assert OutputManager([]).play_all(MEDIA, 0.5) == []
+
+
+def test_raising_player_is_isolated():
+    good = FakePlayer("good")
+    boom = FakePlayer("boom", fail_times=5, raises=True)
+    results = OutputManager([good, boom]).play_all(MEDIA, 0.5)
+    by_name = {r.player: r.success for r in results}
+    assert by_name == {"good": True, "boom": False}

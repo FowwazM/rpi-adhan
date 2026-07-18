@@ -35,3 +35,34 @@ def test_play_failure_returns_error():
     player = CastPlayer("Living", cast_factory=boom, poll_interval=0)
     r = player.play(MEDIA, 0.5)
     assert not r.success and "device offline" in r.error
+
+
+def test_play_restores_volume_on_playback_error():
+    class _BoomMC:
+        def play_media(self, url, content_type):
+            raise RuntimeError("cast dropped")
+
+        def block_until_active(self, timeout=None):
+            pass
+
+        @property
+        def status(self):
+            s = type("S", (), {})()
+            s.player_state = "IDLE"
+            return s
+
+    fake = FakeCast(volume=0.3)
+    fake.media_controller = _BoomMC()
+    player = CastPlayer("Living", cast_factory=lambda name: fake, poll_interval=0)
+    r = player.play(MEDIA, 0.7)
+    assert not r.success and "cast dropped" in r.error
+    assert fake.set_volumes[-1] == 0.3  # volume restored despite the error
+
+
+def test_wait_for_finish_polls_until_idle():
+    fake = FakeCast(volume=0.3, states=("PLAYING", "PLAYING", "IDLE"))
+    sleeps = []
+    player = CastPlayer("Living", cast_factory=lambda name: fake, poll_interval=1, sleep=sleeps.append)
+    r = player.play(MEDIA, 0.5)
+    assert r.success
+    assert sleeps == [1, 1]  # polled through 2 PLAYING states, then IDLE

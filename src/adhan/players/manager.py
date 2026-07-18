@@ -14,5 +14,11 @@ class OutputManager:
         if not self._players:
             return []
         with ThreadPoolExecutor(max_workers=len(self._players)) as pool:
-            futures = [pool.submit(p.play, media, volume) for p in self._players]
-            return [f.result() for f in futures]
+            pairs = [(p, pool.submit(p.play, media, volume)) for p in self._players]
+            results: list[PlayResult] = []
+            for player, future in pairs:
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    results.append(PlayResult(player.name, False, error=str(exc)))
+            return results

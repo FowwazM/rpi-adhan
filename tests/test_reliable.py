@@ -38,3 +38,17 @@ def test_exception_is_caught_as_failure():
 def test_name_delegates():
     rp, _ = _wrap(FakePlayer("cast:Kitchen"))
     assert rp.name == "cast:Kitchen"
+
+
+def test_health_check_delegates():
+    from adhan.models import HealthState
+
+    inner = FakePlayer("p", health=HealthState.UNREACHABLE)
+    rp, _ = _wrap(inner)
+    assert rp.health_check().state is HealthState.UNREACHABLE
+
+
+def test_backoff_escalates_across_retries():
+    rp, sleeps = _wrap(FakePlayer("p", fail_times=2), attempts=3)
+    r = rp.play(MEDIA, 0.5)
+    assert r.success and r.attempts == 3 and sleeps == [5, 10]

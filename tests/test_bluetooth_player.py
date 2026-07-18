@@ -32,3 +32,10 @@ def test_play_failure_returns_error():
     runner = RecordingRunner(sinks_output="42\tadhan_combined\tx\ty\tRUNNING\n", fail_on="paplay")
     r = BluetoothPlayer("adhan_combined", runner=runner).play(MEDIA, 0.4)
     assert not r.success
+
+
+def test_health_unreachable_when_pactl_raises():
+    runner = RecordingRunner(fail_on="list")  # `pactl list ...` raises
+    assert (
+        BluetoothPlayer("adhan_combined", runner=runner).health_check().state is HealthState.UNREACHABLE
+    )
