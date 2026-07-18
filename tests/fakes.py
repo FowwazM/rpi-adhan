@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from adhan.models import PrayerSchedule
+from adhan.models import HealthState, HealthStatus, MediaRef, PlayResult, PrayerSchedule
 
 
 class FakeTimeProvider:
@@ -44,3 +44,25 @@ class FakeScheduler:
 
     def start(self):
         self.started = True
+
+
+class FakePlayer:
+    """Fails its first `fail_times` play() calls, then succeeds."""
+
+    def __init__(self, name: str, fail_times: int = 0, health=HealthState.OK, raises: bool = False):
+        self.name = name
+        self._fail_times = fail_times
+        self._health = health
+        self._raises = raises
+        self.calls: list[tuple[MediaRef, float]] = []
+
+    def health_check(self) -> HealthStatus:
+        return HealthStatus(player=self.name, state=self._health)
+
+    def play(self, media: MediaRef, volume: float) -> PlayResult:
+        self.calls.append((media, volume))
+        if len(self.calls) <= self._fail_times:
+            if self._raises:
+                raise RuntimeError("boom")
+            return PlayResult(self.name, success=False, error="simulated failure")
+        return PlayResult(self.name, success=True)
