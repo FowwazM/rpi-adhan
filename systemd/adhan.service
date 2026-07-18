@@ -1,0 +1,17 @@
+[Unit]
+Description=Adhan appliance
+After=network-online.target pipewire.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adhan
+Group=adhan
+SupplementaryGroups=audio bluetooth
+ExecStart=/opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json run
+Restart=always
+RestartSec=10
+StateDirectory=adhan
+
+[Install]
+WantedBy=multi-user.target
