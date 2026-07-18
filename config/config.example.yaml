@@ -1,0 +1,54 @@
+version: 1
+
+location:
+  latitude: 29.7007851
+  longitude: -95.8028693
+  timezone: America/Chicago        # IANA tz; drives DST automatically
+
+prayer_times:
+  source: offline                  # offline (Phase 2: mawaqit)
+  offline:
+    method: north_america          # ISNA; see adhanpy CalculationMethod names
+    madhab: hanafi                 # shafi | hanafi (affects Asr)
+    high_latitude_rule: middle_of_the_night
+  prayers:
+    fajr:
+      enabled: true
+      mode: before_sunrise         # calculated | before_sunrise
+      before_sunrise_minutes: 30
+      offset_minutes: 0
+    dhuhr:   {enabled: true, offset_minutes: 0}
+    asr:     {enabled: true, offset_minutes: 0}
+    maghrib: {enabled: true, offset_minutes: 0}
+    isha:    {enabled: true, offset_minutes: 0}
+
+audio:
+  default_file: adhan.mp3          # relative to the media directory
+  per_prayer_files:
+    fajr: adhan_fajr.mp3
+  default_volume: 0.6
+  per_prayer_volume:
+    fajr: 0.4
+
+outputs:
+  cast:
+    - name: "Downstairs group"     # Google Home speaker-group OR device name
+  bluetooth:
+    adapter: auto                  # auto | hci0 | hci1 ...
+    keepalive: true
+    speakers:
+      - {name: "JBL Charge 5", mac: "AA:BB:CC:DD:EE:FF"}
+      - {name: "Echo Dot Bedroom", mac: "11:22:33:44:55:66"}
+
+network:
+  http_host: auto                  # Pi LAN IP (Chromecast needs an IP, not .local)
+  http_port: 8127
+
+reliability:
+  retry_attempts: 2
+  retry_backoff_seconds: 5
+  misfire_grace_seconds: 300
+
+logging:
+  level: INFO
+  json: true
