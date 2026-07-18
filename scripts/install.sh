@@ -21,6 +21,20 @@ ADHAN_UID="$(id -u adhan)"
 sudo -u adhan XDG_RUNTIME_DIR="/run/user/${ADHAN_UID}" \
   systemctl --user enable --now pipewire pipewire-pulse wireplumber || true
 
+echo "== Verifying PipeWire is reachable for the adhan user =="
+pw_ok=0
+for _ in $(seq 1 10); do
+  if sudo -u adhan XDG_RUNTIME_DIR="/run/user/${ADHAN_UID}" pactl info >/dev/null 2>&1; then
+    pw_ok=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$pw_ok" -ne 1 ]]; then
+  echo "WARNING: PipeWire is not reachable for user 'adhan' — Bluetooth audio will not work" >&2
+  echo "         until this is fixed. Check: sudo -u adhan XDG_RUNTIME_DIR=/run/user/${ADHAN_UID} systemctl --user status pipewire" >&2
+fi
+
 echo "== Laying down application =="
 sudo mkdir -p "$APP_DIR" "$CFG_DIR/media" /var/lib/adhan "$APP_DIR/share"
 sudo rm -rf "$APP_DIR/src" "$APP_DIR/scripts"
