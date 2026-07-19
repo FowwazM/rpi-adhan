@@ -289,3 +289,13 @@ the combined sink when the set of Bluetooth sinks changes. Confirm it's running
 starts a *second* WirePlumber for your session. It's harmless for the appliance
 (which runs with no interactive login), but while debugging audio, remember that
 your `adhan`-user commands and your login session's audio are separate.
+
+**A prayer didn't fire after a reboot (whole day skipped).** The Raspberry Pi has no
+real-time clock, so if the service starts at boot *before* NTP corrects the clock,
+prayers get scheduled against the wrong time and never fire — `adhan status` shows an
+empty `last_results` even though `today_schedule` looks right, and the journal has no
+`firing adhan` at the prayer time. `install.sh` prevents this by enabling
+`systemd-time-wait-sync` and ordering the service `After=time-sync.target`. On an
+already-installed box: `sudo systemctl enable systemd-time-wait-sync.service` and add
+`After=time-sync.target` to `adhan.service`; as an immediate recovery, once
+`timedatectl` shows `System clock synchronized: yes`, just `sudo systemctl restart adhan`.

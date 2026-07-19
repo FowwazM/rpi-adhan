@@ -95,6 +95,10 @@ for svc in adhan adhan-bt-keepalive; do
 done
 sudo chown -R adhan:adhan "$APP_DIR" "$CFG_DIR" /var/lib/adhan
 sudo chmod 0640 "$CFG_DIR/config.yaml"
+# Block boot's time-sync.target until the clock is actually NTP-synced (the Pi has
+# no RTC), so the adhan service never schedules prayers against a wrong boot-time
+# clock and then silently misses them.
+sudo systemctl enable systemd-time-wait-sync.service 2>/dev/null || true
 sudo systemctl daemon-reload
 
 cat <<'EOF'

@@ -1,7 +1,10 @@
 [Unit]
 Description=Adhan appliance
-After=network-online.target adhan-bt-keepalive.service
-Wants=network-online.target
+# time-sync.target: a Raspberry Pi has no RTC, so wait until the clock is
+# NTP-synced before scheduling — otherwise prayers scheduled against the wrong
+# boot-time clock never fire (see install.sh, which enables systemd-time-wait-sync).
+After=network-online.target time-sync.target adhan-bt-keepalive.service
+Wants=network-online.target time-sync.target
 
 [Service]
 Type=simple
