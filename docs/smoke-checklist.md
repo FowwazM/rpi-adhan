@@ -170,6 +170,18 @@ sudo systemctl enable --now adhan-bt-keepalive adhan-bt-watchdog adhan
 Setup is complete. Now work through the validation checklist below, starting with
 PipeWire reachability.
 
+## Running the CLI
+
+The `adhan` command lives in the service venv (not on your `PATH`) and runs as the
+`adhan` service user. Define a shorthand once per shell so the checks below work as
+written:
+
+```bash
+alias adhan='sudo -u adhan /opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json'
+```
+
+Then `adhan status`, `adhan test-play dhuhr`, etc. run correctly.
+
 ## 0. PipeWire reachability (validate FIRST — the top deployment risk)
 
 - [ ] `loginctl show-user adhan | grep Linger` shows `Linger=yes`.
@@ -180,14 +192,14 @@ PipeWire reachability.
 
 ## 1. Prayer schedule
 
-- [ ] `sudo -u adhan /opt/adhan/.venv/bin/adhan --state /var/lib/adhan/state.json status` prints the next prayer and today's schedule.
+- [ ] `adhan status` prints the next prayer and today's schedule.
 - [ ] Cross-check the computed times against aladhan.com for the client's location, method, and madhab.
 
 ## 2. Playback
 
-- [ ] `adhan ... test-play dhuhr` plays on every configured Google Nest target (cast reaches the device via the Pi's IP URL, not `.local`).
-- [ ] `adhan ... test-play dhuhr` plays on every Bluetooth speaker simultaneously (via the `adhan_combined` sink).
-- [ ] Fajr plays the Fajr-specific file at the quieter Fajr volume (`adhan ... test-play fajr`).
+- [ ] `adhan test-play dhuhr` plays on every configured Google Nest target (cast reaches the device via the Pi's IP URL, not `.local`).
+- [ ] `adhan test-play dhuhr` plays on every Bluetooth speaker simultaneously (via the `adhan_combined` sink).
+- [ ] Fajr plays the Fajr-specific file at the quieter Fajr volume (`adhan test-play fajr`).
 - [ ] Running `test-play` does NOT change `adhan status` output (it uses a throwaway state).
 
 ## 3. Bluetooth resilience
