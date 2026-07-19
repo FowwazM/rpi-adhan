@@ -30,6 +30,20 @@ if [[ -f /etc/bluetooth/main.conf ]]; then
   sudo systemctl restart bluetooth || true
 fi
 
+echo "== WirePlumber headless Bluetooth =="
+# WirePlumber's Bluetooth monitor only runs for a user with an active login seat.
+# The lingering (headless) adhan service user has none, so without this the monitor
+# stays stopped and no A2DP endpoint is registered with BlueZ. Disable seat gating.
+sudo mkdir -p /etc/wireplumber/wireplumber.conf.d
+sudo tee /etc/wireplumber/wireplumber.conf.d/51-headless-bluez.conf >/dev/null <<'EOF'
+## Run the Bluetooth monitor without an active login seat (headless service user).
+wireplumber.profiles = {
+  main = {
+    monitor.bluez.seat-monitoring = disabled
+  }
+}
+EOF
+
 echo "== Enabling user-session audio (PipeWire) for the service account =="
 sudo loginctl enable-linger adhan
 ADHAN_UID="$(id -u adhan)"

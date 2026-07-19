@@ -150,19 +150,7 @@ For each Bluetooth speaker or Echo, put it in pairing mode, then run the wizard
 sudo -u adhan /opt/adhan/scripts/bt-pair.sh          # or: ... bt-pair.sh hci1
 ```
 
-If pairing fails with `org.bluez.Error.NotReady`, the controller isn't powered.
-The installer sets `AutoEnable=true` so it comes up at boot, but you can force it
-once with `sudo rfkill unblock bluetooth && sudo bluetoothctl power on` (confirm
-with `bluetoothctl show` → `Powered: yes`). If `bluetoothctl list` prints nothing,
-there's no controller at all — plug in / fix the USB dongle, or re-enable onboard
-Bluetooth by removing the `dtoverlay=disable-bt` line from step 3.
-
-If pairing succeeds but **connect** fails with `br-connection-profile-unavailable`,
-PipeWire's Bluetooth audio plugin is missing, so there's no A2DP endpoint to attach
-to. The installer now pulls in `libspa-0.2-bluetooth`; on an already-installed box,
-run `sudo apt-get install -y libspa-0.2-bluetooth`, restart the adhan user's audio
-(`sudo -u adhan XDG_RUNTIME_DIR=/run/user/$(id -u adhan) systemctl --user restart pipewire wireplumber`),
-then `bluetoothctl connect <mac>` again.
+If pairing or connecting fails, see **Troubleshooting** at the end of this document.
 
 Note each speaker's MAC, add it under `outputs.bluetooth.speakers` in the config,
 then write all the MACs for the reconnect watchdog:
@@ -213,3 +201,56 @@ PipeWire reachability.
 - [ ] Reboot the Pi; `adhan status` shows the schedule and services are active, with no interactive login.
 - [ ] Let a real prayer time pass and confirm the adhan plays and `state.json` records success per output.
 - [ ] Confirm playback still fires the day after (daily 00:01 regeneration) and across a DST boundary if applicable.
+
+## Troubleshooting
+
+Bluetooth audio on a headless Raspberry Pi has several sharp edges. A fresh
+`install.sh` handles all of them, but if you hit one on an older box or while
+debugging, this maps each symptom to its cause and fix. The commands assume
+`U=$(id -u adhan)` is set.
+
+**Pairing fails with `org.bluez.Error.NotReady`.** The controller isn't powered.
+`install.sh` sets `AutoEnable=true` so it powers on at boot; to force it once:
+`sudo rfkill unblock bluetooth && sudo bluetoothctl power on` (confirm with
+`bluetoothctl show` → `Powered: yes`). If `bluetoothctl list` prints nothing,
+there's no controller at all — plug in / fix the USB dongle, or re-enable onboard
+Bluetooth by removing the `dtoverlay=disable-bt` line from Setup step 3.
+
+**Pairing works but connect fails and no `bluez_output…` sink appears.** The Pi has
+no A2DP endpoint registered with BlueZ. Check with
+`sudo -u adhan XDG_RUNTIME_DIR=/run/user/$U pactl list short sinks | grep bluez`
+after a connect attempt. Two causes, both fixed by a fresh `install.sh`:
+
+- Error `br-connection-profile-unavailable` because PipeWire's Bluetooth plugin is
+  missing → `sudo apt-get install -y libspa-0.2-bluetooth`.
+- No sink even with the plugin present → WirePlumber's Bluetooth monitor is gated
+  on an active login *seat*, and the lingering (headless) `adhan` user has none, so
+  the monitor never starts (its debug log says `Seat state changed: lingering`).
+  The fix is the drop-in `install.sh` writes at
+  `/etc/wireplumber/wireplumber.conf.d/51-headless-bluez.conf`:
+
+  ```
+  wireplumber.profiles = {
+    main = {
+      monitor.bluez.seat-monitoring = disabled
+    }
+  }
+  ```
+
+  Restart the adhan user's audio after adding it:
+  `sudo -u adhan XDG_RUNTIME_DIR=/run/user/$U systemctl --user restart wireplumber`.
+
+**Connect fails with `br-connection-refused`.** The Pi side is fine — the *speaker*
+refused, almost always because it's already connected to another source (a phone or
+tablet holding its single audio slot). Turn Bluetooth off on other devices,
+power-cycle the speaker into pairing mode, then `bluetoothctl remove <mac>` and
+re-pair.
+
+**A reconnected speaker isn't in `adhan_combined`.** The keep-alive service rebuilds
+the combined sink when the set of Bluetooth sinks changes. Confirm it's running
+(`systemctl status adhan-bt-keepalive`) and re-check `pactl list short sinks`.
+
+**Two WirePlumber instances.** Logging in interactively (e.g. SSH as your own user)
+starts a *second* WirePlumber for your session. It's harmless for the appliance
+(which runs with no interactive login), but while debugging audio, remember that
+your `adhan`-user commands and your login session's audio are separate.
