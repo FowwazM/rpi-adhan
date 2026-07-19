@@ -58,8 +58,8 @@ def test_main_dispatches_test_play(monkeypatch):
     calls = {}
 
     class _FakeApp:
-        def __init__(self, config, media, state):
-            pass
+        def __init__(self, config, media, state, http_port=None):
+            calls["http_port"] = http_port
 
         def build(self):
             calls["build"] = True
@@ -71,3 +71,4 @@ def test_main_dispatches_test_play(monkeypatch):
     monkeypatch.setattr("adhan.config.load_config", lambda path: object())
     rc = main(["--config", "x.yaml", "test-play", "asr"])
     assert rc == 0 and calls.get("trigger") == Prayer.ASR
+    assert calls.get("http_port") == 0  # test-play binds an ephemeral media port

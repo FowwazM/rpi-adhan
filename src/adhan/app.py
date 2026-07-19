@@ -40,10 +40,19 @@ def build_players(
 
 
 class App:
-    def __init__(self, config: Config, media_dir: Path, state_path: Path):
+    def __init__(
+        self,
+        config: Config,
+        media_dir: Path,
+        state_path: Path,
+        http_port: int | None = None,
+    ):
         self._config = config
         self._media_dir = Path(media_dir)
         self._state_path = Path(state_path)
+        # None -> use the configured port; 0 -> an ephemeral port. test-play uses 0
+        # so it never collides with a running `adhan run` holding the real port.
+        self._http_port = http_port
         self._http: MediaHTTPServer | None = None
         self._orchestrator: Orchestrator | None = None
         self._host: str | None = None
@@ -55,12 +64,15 @@ class App:
         return self._host
 
     def _base_url(self) -> str:
-        return f"http://{self._resolve_host()}:{self._config.network.http_port}"
+        # After build(), use the actually-bound port (matters when it's ephemeral).
+        port = self._http.port if self._http is not None else self._config.network.http_port
+        return f"http://{self._resolve_host()}:{port}"
 
     def build(self) -> AdhanScheduler:
         cfg = self._config
         host = self._resolve_host()
-        self._http = MediaHTTPServer(self._media_dir, host=host, port=cfg.network.http_port)
+        port = cfg.network.http_port if self._http_port is None else self._http_port
+        self._http = MediaHTTPServer(self._media_dir, host=host, port=port)
         media = MediaManager(cfg.audio, self._media_dir, self._base_url())
         players = build_players(cfg.outputs, cfg.reliability, DEFAULT_COMBINED_SINK)
         state = StateStore(self._state_path)

@@ -50,7 +50,7 @@ def cmd_test_play(args) -> int:
     config = load_config(args.config)
     # Throwaway state dir so a manual test-play never overwrites the live state.json.
     with tempfile.TemporaryDirectory() as tmp:
-        app = App(config, Path(args.media), Path(tmp) / "state.json")
+        app = App(config, Path(args.media), Path(tmp) / "state.json", http_port=0)
         app.build()
         app.trigger(Prayer(args.prayer))
     return 0
