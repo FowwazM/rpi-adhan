@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -69,6 +70,10 @@ class App:
         return f"http://{self._resolve_host()}:{port}"
 
     def build(self) -> AdhanScheduler:
+        # pactl/paplay (Bluetooth output) need the user runtime dir to find the
+        # PipeWire socket. Ensure it's set even when launched without it (e.g. a
+        # manual `sudo -u adhan ... test-play`); the systemd unit also sets it.
+        os.environ.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
         cfg = self._config
         host = self._resolve_host()
         port = cfg.network.http_port if self._http_port is None else self._http_port

@@ -177,7 +177,7 @@ The `adhan` command lives in the service venv (not on your `PATH`) and runs as t
 written:
 
 ```bash
-alias adhan='sudo -u adhan /opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json'
+alias adhan='sudo -u adhan XDG_RUNTIME_DIR=/run/user/$(id -u adhan) /opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json'
 ```
 
 Then `adhan status`, `adhan test-play dhuhr`, etc. run correctly.
@@ -251,6 +251,12 @@ after a connect attempt. Two causes, both fixed by a fresh `install.sh`:
 
   Restart the adhan user's audio after adding it:
   `sudo -u adhan XDG_RUNTIME_DIR=/run/user/$U systemctl --user restart wireplumber`.
+
+**`test-play` fails with `pa_context_connect() failed: Connection refused`** (only the
+Bluetooth leg; cast still works). `pactl`/`paplay` can't reach PipeWire because
+`XDG_RUNTIME_DIR` isn't set. The systemd service sets it, and the app now sets it
+itself, but for a manual run prefix it: `sudo -u adhan
+XDG_RUNTIME_DIR=/run/user/$(id -u adhan) …` (the `adhan` alias above already does).
 
 **Connect fails with `br-connection-refused`.** The Pi side is fine — the *speaker*
 refused, almost always because it's already connected to another source (a phone or
