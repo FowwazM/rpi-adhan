@@ -14,6 +14,22 @@ sudo apt-get install -y python3 python3-venv python3-pip \
 echo "== Creating service user =="
 id adhan &>/dev/null || sudo useradd --system --create-home --groups audio,bluetooth adhan
 
+echo "== Bluetooth adapter power =="
+# Unblock the radio and make adapters power on automatically at boot, so the
+# keep-alive/watchdog/playback services find a ready controller (avoids
+# org.bluez.Error.NotReady). Harmless on Bluetooth-free deployments.
+sudo rfkill unblock bluetooth 2>/dev/null || true
+if [[ -f /etc/bluetooth/main.conf ]]; then
+  if grep -qE '^[[:space:]]*AutoEnable[[:space:]]*=' /etc/bluetooth/main.conf; then
+    sudo sed -i -E 's/^[[:space:]]*AutoEnable[[:space:]]*=.*/AutoEnable=true/' /etc/bluetooth/main.conf
+  elif grep -q '^\[Policy\]' /etc/bluetooth/main.conf; then
+    sudo sed -i '/^\[Policy\]/a AutoEnable=true' /etc/bluetooth/main.conf
+  else
+    printf '\n[Policy]\nAutoEnable=true\n' | sudo tee -a /etc/bluetooth/main.conf >/dev/null
+  fi
+  sudo systemctl restart bluetooth || true
+fi
+
 echo "== Enabling user-session audio (PipeWire) for the service account =="
 sudo loginctl enable-linger adhan
 ADHAN_UID="$(id -u adhan)"

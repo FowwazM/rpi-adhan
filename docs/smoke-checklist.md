@@ -72,7 +72,36 @@ point), lays the app down in `/opt/adhan` with its venv, copies the example
 config, generates the keep-alive tone, and installs the systemd units. It prints a
 "Next steps" summary; the steps below expand on it.
 
-### 6. Configure `/etc/adhan/config.yaml`
+### 6. Connect the Google Nest speakers
+
+Skip this step if you have no Google speakers. The appliance discovers Cast
+devices by their **friendly name** over the local network — there is no pairing.
+Prerequisites:
+
+- Each Nest / Chromecast-built-in speaker is already set up in the **Google Home
+  app** and on the **same Wi-Fi/LAN and subnet** as the Pi. Cast discovery uses
+  mDNS/multicast, so avoid client isolation or separate VLANs between them.
+- For **synced multi-room**, create a **speaker group** in the Google Home app
+  (**+** → *Create speaker group*). The group is itself a castable target and
+  keeps its members in sync; casting to individual speakers can drift out of sync.
+
+List the exact names the Pi can see (copy them verbatim into the config in the
+next step — they are case-sensitive). This also confirms discovery works:
+
+```bash
+sudo -u adhan /opt/adhan/.venv/bin/python - <<'PY'
+import pychromecast
+casts, browser = pychromecast.get_chromecasts(timeout=10)
+for cc in casts:
+    print(cc.cast_info.friendly_name)
+pychromecast.discovery.stop_discovery(browser)
+PY
+```
+
+If a speaker or group is missing, fix discovery before continuing (same subnet,
+multicast/mDNS allowed, and the device shows online in the Google Home app).
+
+### 7. Configure `/etc/adhan/config.yaml`
 
 The file is owned by `adhan` and mode `0640`, so edit it with sudo (start from the
 copied template, which mirrors `config/config.example.yaml`):
@@ -90,9 +119,9 @@ Set at minimum:
   `mode` (`calculated`, or `before_sunrise` with `before_sunrise_minutes`).
 - `audio:` — `default_file` (and `per_prayer_files.fajr` if you use a separate
   Fajr adhan), `default_volume`, and any `per_prayer_volume` (e.g. a quieter Fajr).
-- `outputs.cast:` — one entry per Google target: a device name, or the name of a
-  **speaker group** created in the Google Home app for synced multi-room.
-- `outputs.bluetooth.speakers:` — filled in at step 8. Set `adapter` to `auto`
+- `outputs.cast:` — one entry per Google target, its `name` matching a device or
+  speaker-group name **exactly** as listed in step 6.
+- `outputs.bluetooth.speakers:` — filled in at step 9. Set `adapter` to `auto`
   (or a specific `hciN` if you added a dongle).
 
 Validate that the config parses before going further:
@@ -102,7 +131,7 @@ sudo -u adhan /opt/adhan/.venv/bin/python -c \
   "from adhan.config import load_config; load_config('/etc/adhan/config.yaml'); print('config OK')"
 ```
 
-### 7. Add the adhan audio files
+### 8. Add the adhan audio files
 
 Copy your chosen MP3s into the media directory, named to match the config
 (`adhan.mp3`, plus `adhan_fajr.mp3` if you set a Fajr-specific file):
@@ -112,14 +141,21 @@ sudo cp adhan.mp3 adhan_fajr.mp3 /etc/adhan/media/
 sudo chown adhan:adhan /etc/adhan/media/*.mp3
 ```
 
-### 8. Pair Bluetooth speakers (and/or Echos)
+### 9. Pair Bluetooth speakers (and/or Echos)
 
 For each Bluetooth speaker or Echo, put it in pairing mode, then run the wizard
-(pass a dongle adapter like `hci1` as an argument if you added one):
+(pass a dongle adapter like `hci1` as an argument if you added one at step 3):
 
 ```bash
 sudo -u adhan /opt/adhan/scripts/bt-pair.sh          # or: ... bt-pair.sh hci1
 ```
+
+If pairing fails with `org.bluez.Error.NotReady`, the controller isn't powered.
+The installer sets `AutoEnable=true` so it comes up at boot, but you can force it
+once with `sudo rfkill unblock bluetooth && sudo bluetoothctl power on` (confirm
+with `bluetoothctl show` → `Powered: yes`). If `bluetoothctl list` prints nothing,
+there's no controller at all — plug in / fix the USB dongle, or re-enable onboard
+Bluetooth by removing the `dtoverlay=disable-bt` line from step 3.
 
 Note each speaker's MAC, add it under `outputs.bluetooth.speakers` in the config,
 then write all the MACs for the reconnect watchdog:
@@ -130,7 +166,7 @@ echo 'MACS="AA:BB:CC:DD:EE:FF 11:22:33:44:55:66"' | sudo tee /etc/adhan/bt-macs.
 
 (An Echo works here as a plain Bluetooth speaker — pair it exactly the same way.)
 
-### 9. Enable the services
+### 10. Enable the services
 
 ```bash
 sudo systemctl enable --now adhan-bt-keepalive adhan-bt-watchdog adhan

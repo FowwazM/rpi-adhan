@@ -8,6 +8,13 @@ if [[ -n "$ADAPTER" ]]; then
   bluetoothctl select "$ADAPTER"
 fi
 
+# Bring the controller up before scanning (avoids org.bluez.Error.NotReady).
+# rfkill unblock needs root, so it's best-effort here; the installer unblocks
+# persistently and sets AutoEnable=true, so this is normally already done.
+rfkill unblock bluetooth 2>/dev/null || true
+bluetoothctl power on || true
+sleep 1
+
 echo "Put your Bluetooth speaker into pairing mode, then note its MAC below."
 bluetoothctl --timeout 20 scan on || true
 echo
