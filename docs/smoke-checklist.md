@@ -268,6 +268,13 @@ tablet holding its single audio slot). Turn Bluetooth off on other devices,
 power-cycle the speaker into pairing mode, then `bluetoothctl remove <mac>` and
 re-pair.
 
+**Bluetooth plays but is far too quiet.** Some speakers report a very low A2DP
+volume that the adhan's per-prayer volume can't overcome. Raise `BT_SINK_VOLUME` in
+`/etc/adhan/bt-macs.env` — PipeWire software amplification, e.g. `BT_SINK_VOLUME="1000%"`
+— then `sudo systemctl restart adhan-bt-keepalive`. The keep-alive pins each speaker
+to that level whenever it (re)builds the combined sink, and the adhan's
+`audio.default_volume` / `per_prayer_volume` scale loudness on top of it.
+
 **A reconnected speaker isn't in `adhan_combined`.** The keep-alive service rebuilds
 the combined sink when the set of Bluetooth sinks changes. Confirm it's running
 (`systemctl status adhan-bt-keepalive`) and re-check `pactl list short sinks`.

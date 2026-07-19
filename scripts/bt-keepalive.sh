@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Maintain a PipeWire combined sink over all Bluetooth A2DP sinks and keep the
-# speakers awake with a continuous near-silent stream. Does NOT change sink
-# volume (the adhan controls that per playback); loudness here is per-stream.
+# speakers awake with a continuous near-silent stream.
 set -euo pipefail
 
 SINK_NAME="adhan_combined"
 SILENCE="/opt/adhan/share/silence.wav"
+# Per-speaker volume, pinned on each A2DP sink whenever the combined sink is
+# (re)built, so it survives reconnects and the adhan's per-prayer volume (set on
+# the combined sink) is the effective control. Some speakers report a very low
+# A2DP volume and need software amplification above 100% — set BT_SINK_VOLUME in
+# /etc/adhan/bt-macs.env (e.g. "1000%") if playback is too quiet.
+SINK_VOLUME="${BT_SINK_VOLUME:-100%}"
 CACHED_SLAVES=""
 
 current_bt_sinks() {
@@ -18,13 +23,25 @@ combine_module_id() {
 }
 
 ensure_combined_sink() {
-  local slaves mid
+  local slaves mid s
   slaves="$(current_bt_sinks)"
-  [[ -z "$slaves" ]] && return 1
+  if [[ -z "$slaves" ]]; then
+    # No Bluetooth sinks: drop the now-stale combined sink and reset the cache so
+    # it rebuilds cleanly when a speaker reconnects.
+    mid="$(combine_module_id || true)"
+    [[ -n "$mid" ]] && pactl unload-module "$mid" || true
+    CACHED_SLAVES=""
+    return 1
+  fi
   if [[ "$slaves" != "$CACHED_SLAVES" ]]; then
     mid="$(combine_module_id || true)"
     [[ -n "$mid" ]] && pactl unload-module "$mid" || true
     pactl load-module module-combine-sink sink_name="$SINK_NAME" slaves="$slaves" >/dev/null
+    # Pin each speaker to SINK_VOLUME; the adhan then scales loudness per prayer
+    # via the combined sink on top of this.
+    for s in ${slaves//,/ }; do
+      pactl set-sink-volume "$s" "$SINK_VOLUME" || true
+    done
     CACHED_SLAVES="$slaves"
   fi
   return 0

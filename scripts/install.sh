@@ -79,7 +79,7 @@ sudo "$APP_DIR/.venv/bin/pip" install -e "$APP_DIR"
 
 echo "== Config =="
 [[ -f "$CFG_DIR/config.yaml" ]] || sudo cp "$REPO_DIR/config/config.example.yaml" "$CFG_DIR/config.yaml"
-[[ -f "$CFG_DIR/bt-macs.env" ]] || echo 'MACS=""' | sudo tee "$CFG_DIR/bt-macs.env" >/dev/null
+[[ -f "$CFG_DIR/bt-macs.env" ]] || printf 'MACS=""\nBT_SINK_VOLUME="100%%"\n' | sudo tee "$CFG_DIR/bt-macs.env" >/dev/null
 
 echo "== Keep-alive tone =="
 # 30s near-silent 50Hz tone at low volume.
