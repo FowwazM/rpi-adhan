@@ -197,6 +197,10 @@ Then `adhan status`, `adhan test-play dhuhr`, etc. run correctly.
 
 ## 2. Playback
 
+`test-play` plays the **full** adhan synchronously (a couple of minutes) and prints a
+per-output result line when each finishes. You'll hear it start within a second or
+two, so `Ctrl-C` once you've confirmed the audio on each output.
+
 - [ ] `adhan test-play dhuhr` plays on every configured Google Nest target (cast reaches the device via the Pi's IP URL, not `.local`).
 - [ ] `adhan test-play dhuhr` plays on every Bluetooth speaker simultaneously (via the `adhan_combined` sink).
 - [ ] Fajr plays the Fajr-specific file at the quieter Fajr volume (`adhan test-play fajr`).

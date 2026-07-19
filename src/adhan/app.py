@@ -101,6 +101,7 @@ class App:
     def trigger(self, prayer: Prayer) -> None:
         """Ad-hoc play for `adhan test-play`: start the media HTTP server so
         Cast outputs can fetch the file, fire the adhan, then stop it."""
+        configure_logging(self._config.logging.level, self._config.logging.json)
         assert self._http is not None and self._orchestrator is not None, "call build() first"
         self._http.start()
         try:
