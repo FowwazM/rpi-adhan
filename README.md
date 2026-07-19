@@ -7,7 +7,7 @@ See `docs/plan-spec.md` for the design and `docs/plan-impl.md` for the build pla
 
 ## Quick start
 
-    git clone <repo> && cd rpi-adhan-v2
+    git clone rpi-adhan
     sudo scripts/install.sh
     # then follow the printed next steps
 

@@ -61,8 +61,7 @@ auto` in the config — it auto-detects this IP.
 ### 5. Get the code onto the Pi and run the installer
 
 ```bash
-git clone <your-repo-url> rpi-adhan-v2   # or scp / copy the repo to the Pi
-cd rpi-adhan-v2
+git clone rpi-adhan   # or scp / copy the repo to the Pi
 sudo scripts/install.sh
 ```
 

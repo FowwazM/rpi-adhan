@@ -15,7 +15,7 @@
 ## File Structure
 
 ```
-rpi-adhan-v2/
+rpi-adhan/
 ├── docs/
 │   ├── plan-spec.md                 # design spec (exists)
 │   └── plan-impl.md                 # this plan
@@ -2832,7 +2832,7 @@ See `docs/plan-spec.md` for the design and `docs/plan-impl.md` for the build pla
 ## Quick start
 
 ```bash
-git clone <repo> && cd rpi-adhan-v2
+git clone rpi-adhan
 sudo scripts/install.sh
 # then follow the printed next steps
 ```
