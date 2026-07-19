@@ -9,7 +9,7 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "== Installing system packages =="
 sudo apt-get update
 sudo apt-get install -y python3 python3-venv python3-pip \
-  bluez pipewire pipewire-pulse wireplumber pulseaudio-utils
+  bluez pipewire pipewire-pulse wireplumber libspa-0.2-bluetooth pulseaudio-utils
 
 echo "== Creating service user =="
 id adhan &>/dev/null || sudo useradd --system --create-home --groups audio,bluetooth adhan

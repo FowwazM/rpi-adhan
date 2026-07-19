@@ -157,6 +157,13 @@ with `bluetoothctl show` → `Powered: yes`). If `bluetoothctl list` prints noth
 there's no controller at all — plug in / fix the USB dongle, or re-enable onboard
 Bluetooth by removing the `dtoverlay=disable-bt` line from step 3.
 
+If pairing succeeds but **connect** fails with `br-connection-profile-unavailable`,
+PipeWire's Bluetooth audio plugin is missing, so there's no A2DP endpoint to attach
+to. The installer now pulls in `libspa-0.2-bluetooth`; on an already-installed box,
+run `sudo apt-get install -y libspa-0.2-bluetooth`, restart the adhan user's audio
+(`sudo -u adhan XDG_RUNTIME_DIR=/run/user/$(id -u adhan) systemctl --user restart pipewire wireplumber`),
+then `bluetoothctl connect <mac>` again.
+
 Note each speaker's MAC, add it under `outputs.bluetooth.speakers` in the config,
 then write all the MACs for the reconnect watchdog:
 
