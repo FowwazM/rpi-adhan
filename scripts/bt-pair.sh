@@ -20,6 +20,10 @@ bluetoothctl --timeout 20 scan on || true
 echo
 read -rp "Enter speaker MAC (AA:BB:CC:DD:EE:FF): " MAC
 
+# Clear any stale/partial bond first, so we always get a clean pairing and never
+# end up in the "Trusted but not Paired" state where A2DP connects are refused.
+bluetoothctl remove "$MAC" 2>/dev/null || true
+
 bluetoothctl pair "$MAC"
 bluetoothctl trust "$MAC"
 bluetoothctl connect "$MAC"
