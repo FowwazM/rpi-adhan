@@ -13,6 +13,20 @@ See `docs/plan-spec.md` for the design and `docs/plan-impl.md` for the build pla
 
 ## Usage
 
+The `adhan` CLI lives in the service venv and runs as the `adhan` user. Add a
+shorthand to your `~/.bashrc` **once** (it persists across reboots and new shells):
+
+```bash
+cat >> ~/.bashrc <<'EOF'
+
+# adhan CLI shorthand (runs as the service user with the right flags)
+alias adhan='sudo -u adhan XDG_RUNTIME_DIR=/run/user/$(id -u adhan) /opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json'
+EOF
+source ~/.bashrc
+```
+
+Then:
+
     adhan run                 # run the service (normally via systemd)
     adhan status              # print the current schedule / last results
     adhan test-play dhuhr     # play a prayer now to verify outputs

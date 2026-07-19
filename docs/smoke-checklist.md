@@ -173,14 +173,20 @@ PipeWire reachability.
 ## Running the CLI
 
 The `adhan` command lives in the service venv (not on your `PATH`) and runs as the
-`adhan` service user. Define a shorthand once per shell so the checks below work as
-written:
+`adhan` service user. Add a shorthand to your `~/.bashrc` **once** — it then persists
+across reboots and new sessions:
 
 ```bash
+cat >> ~/.bashrc <<'EOF'
+
+# adhan CLI shorthand (runs as the service user with the right flags)
 alias adhan='sudo -u adhan XDG_RUNTIME_DIR=/run/user/$(id -u adhan) /opt/adhan/.venv/bin/adhan --config /etc/adhan/config.yaml --media /etc/adhan/media --state /var/lib/adhan/state.json'
+EOF
+source ~/.bashrc
 ```
 
-Then `adhan status`, `adhan test-play dhuhr`, etc. run correctly.
+Then `adhan status`, `adhan test-play dhuhr`, etc. run correctly in this and every
+future shell.
 
 ## 0. PipeWire reachability (validate FIRST — the top deployment risk)
 
