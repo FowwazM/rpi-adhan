@@ -100,9 +100,13 @@ class FakeCast:
         self.set_volumes: list[float] = []
         self.media_controller = _FakeMediaController(states)
         self.waited = False
+        self.disconnected = False
 
     def wait(self, timeout=None):
         self.waited = True
+
+    def disconnect(self):
+        self.disconnected = True
 
     def set_volume(self, level):
         self.volume_level = level

@@ -12,11 +12,26 @@ def _default_factory(name: str):
     import pychromecast
 
     chromecasts, browser = pychromecast.get_listed_chromecasts(friendly_names=[name])
-    if not chromecasts:
-        raise OSError(f"Cast device not found: {name}")
-    cc = chromecasts[0]
-    cc.wait(timeout=10)
-    return cc
+    try:
+        if not chromecasts:
+            raise OSError(f"Cast device not found: {name}")
+        cc = chromecasts[0]
+        cc.wait(timeout=10)
+        return cc
+    finally:
+        # Always tear down the discovery browser. Leaking it leaks zeroconf
+        # threads and multicast sockets, which degrades a long-running service
+        # over days until casts stop connecting at all.
+        pychromecast.discovery.stop_discovery(browser)
+
+
+def _release(cc) -> None:
+    """Best-effort close of a cast connection so repeated plays don't leak
+    sockets and threads in a long-running service."""
+    try:
+        cc.disconnect()
+    except Exception:
+        pass
 
 
 class CastPlayer:
@@ -37,10 +52,11 @@ class CastPlayer:
 
     def health_check(self) -> HealthStatus:
         try:
-            self._factory(self._device_name)
-            return HealthStatus(self.name, HealthState.OK)
+            cc = self._factory(self._device_name)
         except Exception as exc:
             return HealthStatus(self.name, HealthState.UNREACHABLE, detail=str(exc))
+        _release(cc)
+        return HealthStatus(self.name, HealthState.OK)
 
     def play(self, media: MediaRef, volume: float) -> PlayResult:
         try:
@@ -62,6 +78,7 @@ class CastPlayer:
                 cc.set_volume(previous)
             except Exception:
                 pass
+            _release(cc)
 
     def _wait_for_finish(self, mc) -> None:
         waited = 0.0

@@ -20,6 +20,20 @@ def test_health_ok_when_factory_succeeds():
     assert player.health_check().state is HealthState.OK
 
 
+def test_health_check_disconnects_the_cast():
+    fake = FakeCast()
+    player = CastPlayer("Living", cast_factory=lambda name: fake, poll_interval=0)
+    player.health_check()
+    assert fake.disconnected is True  # no leaked connection per health check
+
+
+def test_play_disconnects_the_cast():
+    fake = FakeCast(volume=0.3, states=("PLAYING", "IDLE"))
+    player = CastPlayer("Living", cast_factory=lambda name: fake, poll_interval=0)
+    assert player.play(MEDIA, 0.7).success
+    assert fake.disconnected is True  # connection released after playback
+
+
 def test_health_unreachable_when_factory_raises():
     def boom(name):
         raise OSError("not found")
